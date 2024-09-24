@@ -1,0 +1,41 @@
+name: "detection_postprocessing"
+backend: "python"
+max_batch_size: 1
+input [
+    {
+        name: "detection_postprocessing_input"
+        data_type: TYPE_FP32
+        dims: [-1,-1,-1]
+    },
+    {
+        name: "detection_postprocessing_input_img"
+        data_type: TYPE_UINT8
+        dims: [-1,-1,-1]
+    },
+    {
+        name: "detection_postprocessing_shape_list"
+        data_type: TYPE_FP32
+        dims: [4]
+    }
+
+]
+
+output [
+    {
+        name: "dt_boxes"
+        data_type: TYPE_FP32
+        dims: [-1,-1,-1]
+    },
+    {
+        name: "crop_imgs"
+        data_type: TYPE_FP32
+        dims: [-1,-1,-1]
+    }
+]
+
+instance_group [
+  {
+      count: 2
+      kind: KIND_CPU
+  }
+]

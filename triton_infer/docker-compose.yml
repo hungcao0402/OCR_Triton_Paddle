@@ -1,0 +1,50 @@
+version: "3.0"
+
+services:
+  triton-server:
+    build:
+      args:
+      - FROM_BASE_IMAGE=nvcr.io/nvidia/tritonserver:24.07-py3
+      context: .
+      dockerfile: Dockerfile
+    image: triton_server:latest
+    shm_size: 16gb
+    restart: always
+    # ulimits:
+    #   memlock: -1
+    #   stack: 67108864
+    # runtime: "nvidia"
+    ports:
+      - 8000:8000
+      - 8001:8001
+      - 8002:8002
+    entrypoint:
+      [
+        "tritonserver",
+        "--model-repository=/models",
+        # "--allow-metrics=true",
+        # "--allow-gpu-metrics=true",
+      ]
+    volumes:
+      - type: bind
+        source: model_repository
+        target: /models
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  # triton-client:
+  #   image: nvcr.io/nvidia/tritonserver:24.07-py3-sdk
+  #   # runtime: "nvidia"
+  #   depends_on:
+  #     - triton-server
+  #   volumes:
+  #     - type: bind
+  #       source: workspace
+  #       target: /workspace
+  #   entrypoint:
+  #     [
+  #       "python3",
+  #       "/workspace/client.py",
+  #       "--image=/workspace/img_12.jpg",
+  #       "--url=${TRITON_ENDPOINT}:8001"
+  #     ]

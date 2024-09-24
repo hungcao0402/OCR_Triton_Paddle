@@ -1,0 +1,10 @@
+name: "text_detection"
+backend: "onnxruntime"
+max_batch_size : 256
+
+instance_group [
+    {
+      count: 1
+      kind: KIND_CPU
+    }
+]
