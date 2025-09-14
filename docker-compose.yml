@@ -1,0 +1,41 @@
+version: "3.0"
+
+services:
+  tritonserver:
+    command:
+      - tritonserver
+      - --model-repository=/models
+      - --model-control-mode=explicit
+      - --load-model=*
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities:
+                - gpu
+              count: 1
+              driver: nvidia
+    build:
+      args:
+      - FROM_BASE_IMAGE=nvcr.io/nvidia/tritonserver:25.06-py3
+      context: triton_infer
+      dockerfile: Dockerfile
+    image: ppocr_tritonserver:latest
+    ports:
+      - 8001:8001
+    shm_size: 10G
+    volumes:
+      - type: bind
+        source: triton_infer/model_repository
+        target: /models
+
+  model_exporter:
+    build:
+      context: onnx_export
+      dockerfile: Dockerfile
+    image: ppocr_onnx_exporter:latest
+    volumes:
+      - type: bind
+        source: onnx_export
+        target: /onnx_export
+

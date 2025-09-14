@@ -255,24 +255,3 @@ class DBPostProcess(object):
             boxes_batch.append({'points': boxes})
         return boxes_batch
 
-
-def crop_imgs(img_raw, crop_coords):
-    list_crop_img = []
-    max_wh_ratio = 320 / 48
-    for crop_idx, crop_coord in enumerate(crop_coords):
-        crop_img = img_raw[crop_coord[0][1]:crop_coord[2][1], crop_coord[0][0]:crop_coord[1][0], ::-1].copy()
-        list_crop_img.append(crop_img)
-        h, w = crop_img.shape[0:2]
-        wh_ratio = w * 1.0 / h
-        max_wh_ratio = max(max_wh_ratio, wh_ratio)
-    norm_img_batch = []
-    for crop_img in list_crop_img:
-        norm_img = resize_norm_img(
-            crop_img, max_wh_ratio
-        )
-        
-        norm_img = norm_img[np.newaxis, :]
-        norm_img_batch.append(norm_img)
-
-    norm_img_batch = np.concatenate(norm_img_batch)
-    return norm_img_batch

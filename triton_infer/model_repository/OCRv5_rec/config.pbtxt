@@ -1,0 +1,26 @@
+name: "OCRv5_rec"
+platform: "tensorrt_plan"
+max_batch_size: 64
+default_model_filename: "rec.plan"
+
+input [
+  {
+    name: "x"       
+    data_type: TYPE_FP32
+    dims: [ 3, 48, -1 ]
+  }
+]
+output [
+  {
+    name: "fetch_name_0"
+    data_type: TYPE_FP32
+    dims: [ -1, 18385 ]
+  }
+]
+
+instance_group [
+  {
+    kind: KIND_GPU
+    count: 2
+  }
+]

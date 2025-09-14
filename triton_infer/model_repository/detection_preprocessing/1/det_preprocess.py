@@ -9,7 +9,7 @@ class DetPreprocess:
         {
             "DetResizeForTest": {
                 "limit_side_len": 960,
-                "limit_type": "max",
+                "limit_type": "max"
             }
         },
         {
@@ -21,7 +21,7 @@ class DetPreprocess:
             }
         },
         {
-            "ToCHWImage": None
+            "ToCHWImage": {}
         },
         {
             "KeepKeys": {
@@ -30,6 +30,7 @@ class DetPreprocess:
         },
     ]
 
+    
     def run(self, imgs):
         resize_imgs = []
         im_infos = []

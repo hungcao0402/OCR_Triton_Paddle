@@ -1,0 +1,25 @@
+name: "UVDoc"
+platform: "tensorrt_plan"
+max_batch_size: 8
+default_model_filename: "uvdoc.plan"
+
+input [
+  {
+    name: "image"       
+    data_type: TYPE_FP32
+    dims: [ 3, -1, -1 ]
+  }
+]
+output [
+  {
+    name: "fetch_name_0"
+    data_type: TYPE_FP32
+    dims: [ 3, -1, -1 ]
+  }
+]
+instance_group [
+  {
+    kind: KIND_GPU
+    count: 2
+  }
+]
