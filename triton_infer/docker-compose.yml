@@ -22,8 +22,8 @@ services:
       [
         "tritonserver",
         "--model-repository=/models",
-        # "--allow-metrics=true",
-        # "--allow-gpu-metrics=true",
+        "--allow-metrics=true",
+        "--allow-gpu-metrics=true",
       ]
     volumes:
       - type: bind
@@ -31,6 +31,24 @@ services:
         target: /models
     environment:
       - PYTHONUNBUFFERED=1
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: always
+    ports:
+      - 9090:9090
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - triton-server
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: always
+    ports:
+      - 3000:3000
+    depends_on:
+      - prometheus
 
   # triton-client:
   #   image: nvcr.io/nvidia/tritonserver:24.07-py3-sdk
