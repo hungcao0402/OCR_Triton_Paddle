@@ -1,6 +1,20 @@
 
 A high-performance OCR (Optical Character Recognition) solution powered by PaddleOCR and NVIDIA Triton Inference Server, designed for scalable text detection and recognition in production environments.
 
+## Table of Contents
+
+- [Key Features](#key-features)
+- [Getting Started](#getting-started)
+  - [1. Start the Services](#1-start-the-services)
+  - [2. Test OCR Inference](#2-test-ocr-inference)
+  - [3. Access Monitoring Dashboards](#3-access-monitoring-dashboards)
+- [Monitoring & Observability](#monitoring--observability)
+  - [Grafana Dashboard Demo](#grafana-dashboard-demo)
+  - [Additional Information](#additional-information)
+- [TODO](#todo)
+  - [🔧 Optimization & Performance](#-optimization--performance)
+- [References](#references)
+
 ## Key Features
 
 - 🚀 **High-Performance**: NVIDIA Triton Server + ONNX Runtime with dynamic batching
