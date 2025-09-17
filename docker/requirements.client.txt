@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+python-multipart
+numpy
+opencv-python-headless
+pillow
+shapely
+pyclipper
+pyyaml
+tritonclient[all]
