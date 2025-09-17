@@ -33,7 +33,7 @@ docker compose up -d
 ```
 
 This will start:
-- **Triton Inference Server** (when uncommented in docker-compose.yml)
+- **Triton Inference Server** 
 - **OCR Client API** exposing the FastAPI service on <http://localhost:8080>
 - **Prometheus** for metrics collection
 - **Grafana** for monitoring dashboards
@@ -48,7 +48,7 @@ curl -X POST "http://localhost:8080/infer" \
   -F "file=@workspace/img_12.jpg"
 ```
 
-For more advanced benchmarking you can still execute the standalone Python client inside `workspace/`:
+For testing the Triton ensemble pipeline, you can execute the standalone Python client inside `workspace/` to call the ensemble model directly instead of using the client-side pipeline:
 
 ```bash
 pip install numpy opencv-python-headless tritonclient[all]

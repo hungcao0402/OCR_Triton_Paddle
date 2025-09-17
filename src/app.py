@@ -50,8 +50,6 @@ def _build_pipeline() -> OCRPipeline:
         verbose=_env_flag("TRITON_VERBOSE", False),
         timeout=_env_int("TRITON_TIMEOUT"),
         ssl=_env_flag("TRITON_SSL", False),
-        root_certificates=os.getenv("TRITON_ROOT_CERTIFICATES"),
-        private_key=os.getenv("TRITON_PRIVATE_KEY"),
         certificate_chain=os.getenv("TRITON_CERTIFICATE_CHAIN"),
     )
 

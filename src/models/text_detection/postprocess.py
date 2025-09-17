@@ -81,7 +81,8 @@ class DBPostProcess:
             else:
                 raise ValueError("box_type can only be one of ['quad', 'poly']")
 
-            boxes = self.filter_tag_det_res(boxes, (src_h, src_w, 3))
+            boxes, scores = self.filter_tag_det_res(boxes, (src_h, src_w, 3), scores)
+            boxes, scores = self.sorted_boxes(boxes, scores)
             boxes_batch.append({"points": boxes, "scores": scores})
         return boxes_batch
 
@@ -223,10 +224,11 @@ class DBPostProcess:
         cv2.fillPoly(mask, contour.reshape(1, -1, 2).astype("int32"), 1)
         return cv2.mean(bitmap[ymin : ymax + 1, xmin : xmax + 1], mask)[0]
 
-    def filter_tag_det_res(self, dt_boxes, image_shape):
+    def filter_tag_det_res(self, dt_boxes, image_shape, scores):
         img_height, img_width = image_shape[0:2]
         dt_boxes_new = []
-        for box in dt_boxes:
+        scores_new = []
+        for i, box in enumerate(dt_boxes):
             if isinstance(box, list):
                 box = np.array(box)
             box = self.order_points_clockwise(box)
@@ -236,8 +238,9 @@ class DBPostProcess:
             if rect_width <= 3 or rect_height <= 3:
                 continue
             dt_boxes_new.append(box)
+            scores_new.append(scores[i])
         dt_boxes = np.array(dt_boxes_new)
-        return dt_boxes
+        return dt_boxes, scores_new
 
     def order_points_clockwise(self, pts):
         rect = np.zeros((4, 2), dtype="float32")
@@ -255,3 +258,43 @@ class DBPostProcess:
             points[pno, 0] = int(min(max(points[pno, 0], 0), img_width - 1))
             points[pno, 1] = int(min(max(points[pno, 1], 0), img_height - 1))
         return points
+
+    @staticmethod
+    def sorted_boxes(dt_boxes, scrores):
+        """
+        Sort text boxes in order from top to bottom, left to right
+        args:
+            dt_boxes(array):detected text boxes with shape [4, 2]
+            scrores(array):scores of the text boxes
+        return:
+            sorted boxes(array) with shape [4, 2]
+        """
+
+        map_boxes = {}
+        for i in range(dt_boxes.shape[0]):
+            map_boxes[i] = (dt_boxes[i], scrores[i])
+
+        num_boxes = dt_boxes.shape[0]
+        sorted_boxes = sorted(dt_boxes, key=lambda x: (x[0][1], x[0][0]))
+        _boxes = list(sorted_boxes)
+
+        for i in range(num_boxes - 1):
+            for j in range(i, -1, -1):
+                if abs(_boxes[j + 1][0][1] - _boxes[j][0][1]) < 10 and (
+                    _boxes[j + 1][0][0] < _boxes[j][0][0]
+                ):
+                    tmp = _boxes[j]
+                    _boxes[j] = _boxes[j + 1]
+                    _boxes[j + 1] = tmp
+                else:
+                    break
+
+        scores_new = []
+        for i in range(len(_boxes)):
+            # Find the original index by comparing box coordinates
+            for orig_idx, (box, score) in map_boxes.items():
+                if np.array_equal(_boxes[i], box):
+                    scores_new.append(score)
+                    break
+            
+        return _boxes, scores_new

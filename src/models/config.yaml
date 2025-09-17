@@ -37,5 +37,5 @@ recognition:
   preprocess:
     image_shape: [3, 48, 320]
   postprocess:
-    dictionary_path: model_repository/recognition_postprocessing/1/en_dict.txt
+    dictionary_path: text_recognition/en_dict.txt
     use_space_char: true
