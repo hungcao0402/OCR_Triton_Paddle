@@ -2,6 +2,7 @@ from __future__ import annotations
 
 """Base utilities for interacting with the Triton Inference Server."""
 
+import logging
 from typing import Dict, Iterable, Mapping
 
 import numpy as np
@@ -11,6 +12,9 @@ from src.config import ModelIOConfig, ModelOutputConfig, TritonClientConfig, Tri
 
 class TritonClientError(RuntimeError):
     """Raised when the Triton client fails to execute an inference request."""
+
+
+logger = logging.getLogger(__name__)
 
 
 class BaseTritonClient:
@@ -92,14 +96,24 @@ class BaseTritonClient:
         if self.client_config.timeout is not None:
             infer_kwargs["client_timeout"] = self.client_config.timeout
 
+        logger.debug(
+            "Sending Triton inference request for model '%s' with %d input(s) and %d requested output(s).",
+            model_config.model_name,
+            len(infer_inputs),
+            len(requested_outputs) if requested_outputs else 0,
+        )
+
         try:
             response = self.client.infer(**infer_kwargs)
         except Exception as exc:  # pragma: no cover - relies on Triton server interaction
             raise TritonClientError(
                 f"Triton inference failed for model '{model_config.model_name}': {exc}"
             ) from exc
+        logger.debug("Triton inference for model '%s' completed successfully.", model_config.model_name)
         results = {}
         output_names: Iterable[ModelOutputConfig] = model_config.outputs
         for output in output_names:
             results[output.name] = response.as_numpy(output.name)
+        if not output_names:
+            logger.debug("Model '%s' requested all outputs by default.", model_config.model_name)
         return results
