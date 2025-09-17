@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from time import perf_counter
 from typing import Any, Dict, List
 
 import numpy as np
@@ -42,30 +43,48 @@ class OCRPipeline:
         return self.run(image)
 
     def run(self, image: np.ndarray) -> List[Dict[str, Any]]:
+        pipeline_start = perf_counter()
+
         logger.debug("Running detection stage.")
+        detection_start = perf_counter()
         try:
             boxes = self._detection_model.predict(image)
         except TextDetectionError as exc:
             raise OCRPipelineError(f"Text detection failed: {exc}") from exc
         except Exception as exc:
             raise OCRPipelineError(f"Text detection failed: {exc}") from exc
+        detection_time = perf_counter() - detection_start
+
         if isinstance(boxes, np.ndarray):
             num_boxes = 0 if boxes.size == 0 else int(boxes.shape[0])
-            if boxes.size == 0:
-                return []
         else:
             num_boxes = len(boxes)
-            if not boxes:
-                return []
-        logger.info("Detection stage produced %d candidate box(es).", num_boxes)
+
+        logger.info(
+            "Detection stage completed in %.2f ms with %d candidate box(es).",
+            detection_time * 1000,
+            num_boxes,
+        )
+
+        if num_boxes == 0:
+            total_time = perf_counter() - pipeline_start
+            logger.info(
+                "OCR pipeline finished in %.2f ms (detection=%.2f ms, recognition=0.00 ms).",
+                total_time * 1000,
+                detection_time * 1000,
+            )
+            return []
 
         logger.debug("Running recognition stage for %d box(es).", num_boxes)
+        recognition_start = perf_counter()
         try:
             texts, scores = self._recognition_model.predict(image, boxes)
         except TextRecognitionError as exc:
             raise OCRPipelineError(f"Text recognition failed: {exc}") from exc
         except Exception as exc:
             raise OCRPipelineError(f"Text recognition failed: {exc}") from exc
+        recognition_time = perf_counter() - recognition_start
+
         results: List[OCRResult] = []
         for idx in range(num_boxes):
             box = boxes[idx]
@@ -78,5 +97,17 @@ class OCRPipeline:
                     score=score,
                 )
             )
-        logger.info("Recognition stage produced %d OCR result(s).", len(results))
+        logger.info(
+            "Recognition stage completed in %.2f ms with %d OCR result(s).",
+            recognition_time * 1000,
+            len(results),
+        )
+
+        total_time = perf_counter() - pipeline_start
+        logger.info(
+            "OCR pipeline finished in %.2f ms (detection=%.2f ms, recognition=%.2f ms).",
+            total_time * 1000,
+            detection_time * 1000,
+            recognition_time * 1000,
+        )
         return [result.as_dict() for result in results]

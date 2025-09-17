@@ -3,6 +3,7 @@ from __future__ import annotations
 """Text recognition model wrapper."""
 
 import logging
+from time import perf_counter
 
 import numpy as np
 
@@ -47,6 +48,7 @@ class TextRecognitionModel(BaseTritonClient):
         if not self._config.model.inputs:
             raise TextRecognitionError("Recognition model configuration must define at least one input.")
         input_name = self._config.model.inputs[0].name
+        infer_start = perf_counter()
         try:
             recognition_outputs = self._infer(
                 self._config.model,
@@ -56,6 +58,7 @@ class TextRecognitionModel(BaseTritonClient):
             raise TextRecognitionError(f"Recognition inference request failed: {exc}") from exc
         except Exception as exc:
             raise TextRecognitionError(f"Unexpected error during recognition inference: {exc}") from exc
+        infer_time = perf_counter() - infer_start
 
         try:
             if self._config.model.outputs:
@@ -70,5 +73,6 @@ class TextRecognitionModel(BaseTritonClient):
             texts, scores = self._postprocessor(logits.astype(np.float32, copy=False))
         except Exception as exc:
             raise TextRecognitionError(f"Recognition postprocessing failed: {exc}") from exc
+        logger.info("Recognition model inference completed in %.2f ms.", infer_time * 1000)
         logger.debug("Recognition post-processing generated %d text prediction(s).", len(texts))
         return texts, np.array(scores, dtype=np.float32)

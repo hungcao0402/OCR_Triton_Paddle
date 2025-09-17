@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+from time import perf_counter
 from typing import List
 
 import cv2
@@ -118,6 +119,8 @@ async def infer(file: UploadFile = File(...)) -> OCRResponse:
     if image is None:
         raise HTTPException(status_code=400, detail="Failed to decode image.")
 
+    request_start = perf_counter()
+
     try:
         results = pipeline.run(image)
     except OCRPipelineError as exc:
@@ -126,5 +129,10 @@ async def infer(file: UploadFile = File(...)) -> OCRResponse:
     except Exception as exc:  # pragma: no cover - safety net for unexpected errors
         logger.exception("Unexpected OCR failure: %s", exc)
         raise HTTPException(status_code=500, detail="Unexpected OCR failure.") from exc
-    logger.info("Inference completed with %d result(s).", len(results))
+    total_time_ms = (perf_counter() - request_start) * 1000
+    logger.info(
+        "Inference completed with %d result(s) in %.2f ms.",
+        len(results),
+        total_time_ms,
+    )
     return OCRResponse(results=results)
