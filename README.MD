@@ -34,35 +34,26 @@ docker compose up -d
 
 This will start:
 - **Triton Inference Server** (when uncommented in docker-compose.yml)
+- **OCR Client API** exposing the FastAPI service on <http://localhost:8080>
 - **Prometheus** for metrics collection
 - **Grafana** for monitoring dashboards
 
 ### 2. Test OCR Inference
-Install required Python packages for the client:
+You can now call the OCR API directly through the containerised FastAPI service:
+
+```bash
+curl -X POST "http://localhost:8080/infer" \
+  -H "accept: application/json" \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@workspace/img_12.jpg"
+```
+
+For more advanced benchmarking you can still execute the standalone Python client inside `workspace/`:
 
 ```bash
 pip install numpy opencv-python-headless tritonclient[all]
-```
-
-
-Use the Python client to test the OCR pipeline:
-
-```bash
 cd workspace
 python3 client.py --image=img_12.jpg --url=localhost:8001
-```
-
-**Parameters:**
-- `--image`: Path to the input image file
-- `--url`: Triton server endpoint (default: localhost:8001)
-- `--model_name`: Model name (default: ensemble_model)
-- `--verbose`: Enable verbose output
-
-**Example output:**
-```
-Time: 0.234
-['Hello World', 'Sample Text']
-dt_boxes.shape: (2, 4, 2)
 ```
 
 ### 3. Access Monitoring Dashboards

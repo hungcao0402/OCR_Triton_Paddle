@@ -1,0 +1,41 @@
+# Central configuration for Triton-served OCR models.
+detection:
+  model:
+    name: text_detection
+    inputs:
+      - name: x
+        dtype: FP32
+        binary_data: true
+    outputs:
+      - name: sigmoid_0.tmp_0
+        binary_data: true
+  preprocess:
+    limit_side_len: 960
+    limit_type: max
+    scale: 0.00392156862745098  # 1 / 255
+    mean: [0.485, 0.456, 0.406]
+    std: [0.229, 0.224, 0.225]
+  postprocess:
+    thresh: 0.3
+    box_thresh: 0.6
+    max_candidates: 1000
+    unclip_ratio: 1.5
+    use_dilation: false
+    score_mode: fast
+    box_type: quad
+
+recognition:
+  model:
+    name: text_recognition
+    inputs:
+      - name: x
+        dtype: FP32
+        binary_data: true
+    outputs:
+      - name: softmax_2.tmp_0
+        binary_data: true
+  preprocess:
+    image_shape: [3, 48, 320]
+  postprocess:
+    dictionary_path: model_repository/recognition_postprocessing/1/en_dict.txt
+    use_space_char: true

@@ -38,6 +38,20 @@ services:
               device_ids: ["0"]
               capabilities: [gpu]
 
+  ocr-client:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.client
+    image: ocr_client:latest
+    restart: always
+    depends_on:
+      - triton-server
+    environment:
+      - TRITON_URL=triton-server:8001
+      - TRITON_PROTOCOL=grpc
+    ports:
+      - 8080:8000
+
   prometheus:
     image: prom/prometheus:latest
     restart: always

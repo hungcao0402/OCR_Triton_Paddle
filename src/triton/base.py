@@ -1,0 +1,111 @@
+from __future__ import annotations
+
+"""Base utilities for interacting with the Triton Inference Server."""
+
+from typing import Dict, Iterable, Mapping
+
+import numpy as np
+
+from src.config import ModelIOConfig, ModelOutputConfig, TritonClientConfig, TritonModelConfig
+
+
+class TritonClientError(RuntimeError):
+    """Raised when the Triton client fails to execute an inference request."""
+
+
+class BaseTritonClient:
+    """Base class that encapsulates common Triton client behaviour.
+
+    The class is responsible for instantiating the low level Triton client and
+    exposes a protected ``_infer`` helper that child classes can leverage to
+    perform model specific inferences.
+    """
+
+    def __init__(self, client_config: TritonClientConfig) -> None:
+        self.client_config = client_config
+        self._client_module = self._import_client_module(client_config.protocol)
+        self._client = self._create_client()
+
+    def _import_client_module(self, protocol: str):  # pragma: no cover - import wrapper
+        if protocol == "grpc":
+            import tritonclient.grpc as grpcclient
+
+            return grpcclient
+        import tritonclient.http as httpclient
+
+        return httpclient
+
+    def _create_client(self):  # pragma: no cover - thin wrapper around SDK
+        client_kwargs = {
+            "url": self.client_config.url,
+            "verbose": self.client_config.verbose,
+        }
+        if self.client_config.protocol == "http":
+            client_kwargs.update(
+                {
+                    "ssl": self.client_config.ssl,
+                    "root_certificates": self.client_config.root_certificates,
+                    "private_key": self.client_config.private_key,
+                    "certificate_chain": self.client_config.certificate_chain,
+                }
+            )
+        else:
+            # gRPC client shares the same keyword names for TLS options.
+            client_kwargs.update(
+                {
+                    "ssl": self.client_config.ssl,
+                    "root_certificates": self.client_config.root_certificates,
+                    "private_key": self.client_config.private_key,
+                    "certificate_chain": self.client_config.certificate_chain,
+                }
+            )
+        return self._client_module.InferenceServerClient(**client_kwargs)
+
+    @property
+    def client(self):
+        return self._client
+
+    def _create_infer_input(self, io_config: ModelIOConfig, data: np.ndarray):
+        infer_input = self._client_module.InferInput(io_config.name, data.shape, datatype=io_config.dtype)
+        # ``binary_data`` defaults to True which is appropriate for most tensor payloads.
+        infer_input.set_data_from_numpy(data, binary_data=io_config.binary_data)
+        return infer_input
+
+    def _create_requested_output(self, output_config: ModelOutputConfig):
+        return self._client_module.InferRequestedOutput(
+            output_config.name, binary_data=output_config.binary_data
+        )
+
+    def _infer(self, model_config: TritonModelConfig, inputs: Mapping[str, np.ndarray]) -> Dict[str, np.ndarray]:
+        infer_inputs = []
+        for io_config in model_config.inputs:
+            if io_config.name not in inputs:
+                raise KeyError(f"Missing input '{io_config.name}' for model '{model_config.model_name}'.")
+            tensor = inputs[io_config.name]
+            if not isinstance(tensor, np.ndarray):
+                raise TypeError(
+                    f"Input '{io_config.name}' for model '{model_config.model_name}' must be a numpy array."
+                )
+            infer_inputs.append(self._create_infer_input(io_config, tensor))
+
+        requested_outputs = [self._create_requested_output(output) for output in model_config.outputs]
+
+        infer_kwargs = {
+            "model_name": model_config.model_name,
+            "inputs": infer_inputs,
+            "outputs": requested_outputs if requested_outputs else None,
+        }
+        if self.client_config.timeout is not None:
+            infer_kwargs["client_timeout"] = self.client_config.timeout
+
+        try:
+            response = self.client.infer(**infer_kwargs)
+        except Exception as exc:  # pragma: no cover - relies on Triton server interaction
+            raise TritonClientError(
+                f"Triton inference failed for model '{model_config.model_name}': {exc}"
+            ) from exc
+        results = {}
+        output_names: Iterable[ModelOutputConfig] = model_config.outputs
+        for output in output_names:
+            results[output.name] = response.as_numpy(output.name)
+        return results
