@@ -2,6 +2,8 @@ from __future__ import annotations
 
 """Text recognition model wrapper."""
 
+import logging
+
 import numpy as np
 
 from src.config import TritonClientConfig
@@ -13,6 +15,9 @@ from src.triton.base import BaseTritonClient, TritonClientError
 
 class TextRecognitionError(RuntimeError):
     """Raised when the text recognition stage fails."""
+
+
+logger = logging.getLogger(__name__)
 
 
 class TextRecognitionModel(BaseTritonClient):
@@ -29,6 +34,8 @@ class TextRecognitionModel(BaseTritonClient):
 
         if boxes is None or getattr(boxes, "size", 0) == 0:
             return [], np.array([], dtype=np.float32)
+
+        logger.debug("Preparing %d detection box(es) for recognition.", len(boxes) if boxes is not None else 0)
 
         try:
             crops = self._preprocessor(image, boxes)
@@ -63,4 +70,5 @@ class TextRecognitionModel(BaseTritonClient):
             texts, scores = self._postprocessor(logits.astype(np.float32, copy=False))
         except Exception as exc:
             raise TextRecognitionError(f"Recognition postprocessing failed: {exc}") from exc
+        logger.debug("Recognition post-processing generated %d text prediction(s).", len(texts))
         return texts, np.array(scores, dtype=np.float32)

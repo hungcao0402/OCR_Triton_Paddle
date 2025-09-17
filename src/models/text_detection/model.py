@@ -2,6 +2,8 @@ from __future__ import annotations
 
 """Text detection model wrapper."""
 
+import logging
+
 import numpy as np
 
 from src.config import TritonClientConfig
@@ -13,6 +15,9 @@ from src.triton.base import BaseTritonClient, TritonClientError
 
 class TextDetectionError(RuntimeError):
     """Raised when the text detection stage fails."""
+
+
+logger = logging.getLogger(__name__)
 
 
 class TextDetectionModel(BaseTritonClient):
@@ -29,6 +34,11 @@ class TextDetectionModel(BaseTritonClient):
 
         if image.ndim != 3 or image.shape[2] != 3:
             raise TextDetectionError("The detection model expects a color image with shape (H, W, 3).")
+
+        logger.debug(
+            "Running detection inference for image with shape %s.",
+            getattr(image, "shape", None),
+        )
 
         try:
             processed_image, shape_list = self._preprocessor(image)
@@ -61,4 +71,5 @@ class TextDetectionModel(BaseTritonClient):
             boxes = self._postprocessor(detection_map.astype(np.float32, copy=False), shape_list)
         except Exception as exc:
             raise TextDetectionError(f"Detection postprocessing failed: {exc}") from exc
+        logger.debug("Detection post-processing returned %d box(es).", len(boxes))
         return boxes
