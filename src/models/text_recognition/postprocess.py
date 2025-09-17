@@ -33,6 +33,7 @@ class BaseRecLabelDecode:
                 lines = fin.readlines()
                 for line in lines:
                     self.character_str.append(line.decode("utf-8").strip("\n").strip("\r\n"))
+
         if use_space_char and " " not in self.character_str:
             self.character_str.append(" ")
         self.character = self.add_special_char(self.character_str)
@@ -52,6 +53,7 @@ class BaseRecLabelDecode:
                     continue
                 if remove_duplicate and idx > 0 and text_index[batch_idx][idx - 1] == text_index[batch_idx][idx]:
                     continue
+
                 char_list.append(self.character[int(text_index[batch_idx][idx])])
                 if text_prob is not None:
                     conf_list.append(text_prob[batch_idx][idx])

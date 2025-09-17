@@ -44,9 +44,6 @@ class BaseTritonClient:
             client_kwargs.update(
                 {
                     "ssl": self.client_config.ssl,
-                    "root_certificates": self.client_config.root_certificates,
-                    "private_key": self.client_config.private_key,
-                    "certificate_chain": self.client_config.certificate_chain,
                 }
             )
         else:
@@ -54,9 +51,6 @@ class BaseTritonClient:
             client_kwargs.update(
                 {
                     "ssl": self.client_config.ssl,
-                    "root_certificates": self.client_config.root_certificates,
-                    "private_key": self.client_config.private_key,
-                    "certificate_chain": self.client_config.certificate_chain,
                 }
             )
         return self._client_module.InferenceServerClient(**client_kwargs)
@@ -68,12 +62,12 @@ class BaseTritonClient:
     def _create_infer_input(self, io_config: ModelIOConfig, data: np.ndarray):
         infer_input = self._client_module.InferInput(io_config.name, data.shape, datatype=io_config.dtype)
         # ``binary_data`` defaults to True which is appropriate for most tensor payloads.
-        infer_input.set_data_from_numpy(data, binary_data=io_config.binary_data)
+        infer_input.set_data_from_numpy(data)
         return infer_input
 
     def _create_requested_output(self, output_config: ModelOutputConfig):
         return self._client_module.InferRequestedOutput(
-            output_config.name, binary_data=output_config.binary_data
+            output_config.name
         )
 
     def _infer(self, model_config: TritonModelConfig, inputs: Mapping[str, np.ndarray]) -> Dict[str, np.ndarray]:

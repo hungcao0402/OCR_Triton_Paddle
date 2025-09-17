@@ -15,18 +15,14 @@ class TritonClientConfig:
         protocol: Communication protocol ("http" or "grpc").
         verbose: Enable verbose logging for Triton client libraries.
         ssl: Enable SSL/TLS connections.
-        root_certificates: Optional path to the root certificates file.
-        private_key: Optional path to the private key file.
         certificate_chain: Optional path to the certificate chain file.
         timeout: Optional per-request timeout in seconds.
     """
 
-    url: str = "localhost:8001"
+    url: str = "192.168.7.9:8001"
     protocol: str = "http"
     verbose: bool = False
     ssl: bool = False
-    root_certificates: Optional[str] = None
-    private_key: Optional[str] = None
     certificate_chain: Optional[str] = None
     timeout: Optional[int] = None
 
