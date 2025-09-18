@@ -47,32 +47,52 @@ class TextRecognitionModel(BaseTritonClient):
 
         if not self._config.model.inputs:
             raise TextRecognitionError("Recognition model configuration must define at least one input.")
+
         input_name = self._config.model.inputs[0].name
-        infer_start = perf_counter()
-        try:
-            recognition_outputs = self._infer(
-                self._config.model,
-                {input_name: crops.astype(np.float32, copy=False)},
-            )
-        except TritonClientError as exc:
-            raise TextRecognitionError(f"Recognition inference request failed: {exc}") from exc
-        except Exception as exc:
-            raise TextRecognitionError(f"Unexpected error during recognition inference: {exc}") from exc
-        infer_time = perf_counter() - infer_start
+        batch_size = max(1, int(self._config.batch_size))
+        num_crops = int(crops.shape[0])
+        total_infer_time = 0.0
+        batch_count = 0
+        all_texts: list[str] = []
+        all_scores: list[float] = []
 
-        try:
-            if self._config.model.outputs:
-                output_name = self._config.model.outputs[0].name
-                logits = recognition_outputs[output_name]
-            else:
-                logits = next(iter(recognition_outputs.values()))
-        except (KeyError, StopIteration) as exc:
-            raise TextRecognitionError("Recognition outputs missing expected tensors.") from exc
+        for start_idx in range(0, num_crops, batch_size):
+            batch = crops[start_idx : start_idx + batch_size]
+            batch_count += 1
+            infer_start = perf_counter()
+            try:
+                recognition_outputs = self._infer(
+                    self._config.model,
+                    {input_name: batch.astype(np.float32, copy=False)},
+                )
+            except TritonClientError as exc:
+                raise TextRecognitionError(f"Recognition inference request failed: {exc}") from exc
+            except Exception as exc:
+                raise TextRecognitionError(f"Unexpected error during recognition inference: {exc}") from exc
+            batch_time = perf_counter() - infer_start
+            total_infer_time += batch_time
 
-        try:
-            texts, scores = self._postprocessor(logits.astype(np.float32, copy=False))
-        except Exception as exc:
-            raise TextRecognitionError(f"Recognition postprocessing failed: {exc}") from exc
-        logger.info("Recognition model inference completed in %.2f ms.", infer_time * 1000)
-        logger.debug("Recognition post-processing generated %d text prediction(s).", len(texts))
-        return texts, np.array(scores, dtype=np.float32)
+            try:
+                if self._config.model.outputs:
+                    output_name = self._config.model.outputs[0].name
+                    logits = recognition_outputs[output_name]
+                else:
+                    logits = next(iter(recognition_outputs.values()))
+            except (KeyError, StopIteration) as exc:
+                raise TextRecognitionError("Recognition outputs missing expected tensors.") from exc
+
+            try:
+                batch_texts, batch_scores = self._postprocessor(logits.astype(np.float32, copy=False))
+            except Exception as exc:
+                raise TextRecognitionError(f"Recognition postprocessing failed: {exc}") from exc
+
+            all_texts.extend(batch_texts)
+            all_scores.extend(batch_scores)
+
+        logger.info(
+            "Recognition model inference completed in %.2f ms across %d batch(es).",
+            total_infer_time * 1000,
+            batch_count,
+        )
+        logger.debug("Recognition post-processing generated %d text prediction(s).", len(all_texts))
+        return all_texts, np.array(all_scores, dtype=np.float32)
