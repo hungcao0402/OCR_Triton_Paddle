@@ -8,6 +8,7 @@ A high-performance OCR (Optical Character Recognition) solution powered by Paddl
   - [1. Start the Services](#1-start-the-services)
   - [2. Test OCR Inference](#2-test-ocr-inference)
   - [3. Access Monitoring Dashboards](#3-access-monitoring-dashboards)
+  - [4. Load Test the API](#4-load-test-the-api)
 - [Monitoring & Observability](#monitoring--observability)
   - [Grafana Dashboard Demo](#grafana-dashboard-demo)
   - [Additional Information](#additional-information)
@@ -62,6 +63,29 @@ After services are running, access the monitoring interfaces:
 
 - **Prometheus:** <http://localhost:9090>
 - **Grafana:** <http://localhost:3000> (admin/admin)
+
+### 4. Load Test the API
+
+The repository includes a [Locust](https://locust.io) load-testing script under
+`tests/performance/locustfile.py` for exercising the `/infer` endpoint with
+realistic OCR requests.
+
+1. Install the optional testing dependency:
+
+   ```bash
+   pip install locust
+   ```
+
+2. Start Locust pointing at the FastAPI service (default dashboard available at
+   <http://localhost:8089>):
+
+   ```bash
+   locust -f tests/performance/locustfile.py --host http://localhost:8080
+   ```
+
+3. (Optional) Override the sample image used for inference by setting the
+   `LOCUST_SAMPLE_IMAGE` environment variable to any local image path before
+   launching Locust.
 
 ## Monitoring & Observability
 
