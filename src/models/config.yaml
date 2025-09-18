@@ -25,6 +25,7 @@ detection:
     box_type: quad
 
 recognition:
+  batch_size: 8
   model:
     name: text_recognition
     inputs:

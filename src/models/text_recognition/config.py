@@ -31,6 +31,7 @@ class TextRecognitionConfig:
     model: TritonModelConfig
     preprocess: RecognitionPreprocessConfig
     postprocess: RecognitionPostprocessConfig
+    batch_size: int = 1
 
 
 def _load_inputs(defs: Iterable[dict]) -> list[ModelIOConfig]:
@@ -105,4 +106,13 @@ def load_text_recognition_config(cfg: dict, base_path: Path | None = None) -> Te
         use_space_char=bool(postprocess_cfg.get("use_space_char", True)),
     )
 
-    return TextRecognitionConfig(model=model, preprocess=preprocess, postprocess=postprocess)
+    batch_size = int(cfg.get("batch_size", 1))
+    if batch_size < 1:
+        raise ValueError("Recognition batch_size must be a positive integer.")
+
+    return TextRecognitionConfig(
+        model=model,
+        preprocess=preprocess,
+        postprocess=postprocess,
+        batch_size=batch_size,
+    )
