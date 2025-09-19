@@ -2,6 +2,7 @@ from __future__ import annotations
 
 """Text recognition model wrapper."""
 
+import asyncio
 import logging
 from time import perf_counter
 
@@ -33,6 +34,14 @@ class TextRecognitionModel(BaseTritonClient):
     def predict(self, image: np.ndarray, boxes: np.ndarray) -> tuple[list[str], np.ndarray]:
         """Run recognition on the detected boxes."""
 
+        return self._predict_impl(image, boxes)
+
+    async def apredict(self, image: np.ndarray, boxes: np.ndarray) -> tuple[list[str], np.ndarray]:
+        """Asynchronous variant of :meth:`predict` offloading work to a thread."""
+
+        return await asyncio.to_thread(self._predict_impl, image, boxes)
+
+    def _predict_impl(self, image: np.ndarray, boxes: np.ndarray) -> tuple[list[str], np.ndarray]:
         if boxes is None or getattr(boxes, "size", 0) == 0:
             return [], np.array([], dtype=np.float32)
 
