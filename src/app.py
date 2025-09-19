@@ -122,7 +122,7 @@ async def infer(file: UploadFile = File(...)) -> OCRResponse:
     request_start = perf_counter()
 
     try:
-        results = pipeline.run(image)
+        results = await pipeline.arun(image)
     except OCRPipelineError as exc:
         logger.exception("OCR pipeline failed: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc)) from exc

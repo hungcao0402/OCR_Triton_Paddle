@@ -2,6 +2,7 @@ from __future__ import annotations
 
 """Text detection model wrapper."""
 
+import asyncio
 import logging
 from time import perf_counter
 
@@ -33,6 +34,14 @@ class TextDetectionModel(BaseTritonClient):
     def predict(self, image: np.ndarray) -> np.ndarray:
         """Run detection and return the detected quadrilateral boxes."""
 
+        return self._predict_impl(image)
+
+    async def apredict(self, image: np.ndarray) -> np.ndarray:
+        """Asynchronous variant of :meth:`predict` offloading work to a thread."""
+
+        return await asyncio.to_thread(self._predict_impl, image)
+
+    def _predict_impl(self, image: np.ndarray) -> np.ndarray:
         if image.ndim != 3 or image.shape[2] != 3:
             raise TextDetectionError("The detection model expects a color image with shape (H, W, 3).")
 

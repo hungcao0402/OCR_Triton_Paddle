@@ -2,6 +2,7 @@ from __future__ import annotations
 
 """Composable OCR pipeline built on top of the Triton inference server."""
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from time import perf_counter
@@ -79,6 +80,84 @@ class OCRPipeline:
         recognition_start = perf_counter()
         try:
             texts, scores = self._recognition_model.predict(image, boxes)
+        except TextRecognitionError as exc:
+            raise OCRPipelineError(f"Text recognition failed: {exc}") from exc
+        except Exception as exc:
+            raise OCRPipelineError(f"Text recognition failed: {exc}") from exc
+        recognition_time = perf_counter() - recognition_start
+
+        results: List[OCRResult] = []
+        for idx in range(num_boxes):
+            box = boxes[idx]
+            text = texts[idx] if idx < len(texts) else ""
+            score = float(scores[idx]) if idx < len(scores) else None
+            results.append(
+                OCRResult(
+                    box=box.astype(float).tolist() if isinstance(box, np.ndarray) else box,
+                    text=text,
+                    score=score,
+                )
+            )
+        logger.info(
+            "Recognition stage completed in %.2f ms with %d OCR result(s).",
+            recognition_time * 1000,
+            len(results),
+        )
+
+        total_time = perf_counter() - pipeline_start
+        logger.info(
+            "OCR pipeline finished in %.2f ms (detection=%.2f ms, recognition=%.2f ms).",
+            total_time * 1000,
+            detection_time * 1000,
+            recognition_time * 1000,
+        )
+        return [result.as_dict() for result in results]
+
+    async def arun(self, image: np.ndarray) -> List[Dict[str, Any]]:
+        pipeline_start = perf_counter()
+
+        logger.debug("Running detection stage.")
+        detection_start = perf_counter()
+        try:
+            detection_async = getattr(self._detection_model, "apredict", None)
+            if detection_async is None:
+                boxes = await asyncio.to_thread(self._detection_model.predict, image)
+            else:
+                boxes = await detection_async(image)
+        except TextDetectionError as exc:
+            raise OCRPipelineError(f"Text detection failed: {exc}") from exc
+        except Exception as exc:
+            raise OCRPipelineError(f"Text detection failed: {exc}") from exc
+        detection_time = perf_counter() - detection_start
+
+        if isinstance(boxes, np.ndarray):
+            num_boxes = 0 if boxes.size == 0 else int(boxes.shape[0])
+        else:
+            num_boxes = len(boxes)
+
+        logger.info(
+            "Detection stage completed in %.2f ms with %d candidate box(es).",
+            detection_time * 1000,
+            num_boxes,
+        )
+
+        if num_boxes == 0:
+            total_time = perf_counter() - pipeline_start
+            logger.info(
+                "OCR pipeline finished in %.2f ms (detection=%.2f ms, recognition=0.00 ms).",
+                total_time * 1000,
+                detection_time * 1000,
+            )
+            return []
+
+        logger.debug("Running recognition stage for %d box(es).", num_boxes)
+        recognition_start = perf_counter()
+        try:
+            recognition_async = getattr(self._recognition_model, "apredict", None)
+            if recognition_async is None:
+                texts, scores = await asyncio.to_thread(self._recognition_model.predict, image, boxes)
+            else:
+                texts, scores = await recognition_async(image, boxes)
         except TextRecognitionError as exc:
             raise OCRPipelineError(f"Text recognition failed: {exc}") from exc
         except Exception as exc:
